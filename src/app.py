@@ -7,6 +7,8 @@ from datetime import datetime
 import uuid
 import json
 import http.client
+import subprocess
+import os
 
 import trust_score
 
@@ -121,6 +123,28 @@ def ras_attestation_request(target, vin):
         return ""
 
 
+def ras_attestation_request_trail(target, vin):
+    """
+    Returns a fake GET response from the RAS
+    """
+
+    attestation_result_fallback_path = './test-payload/ras/attestationResult.json'
+    # Load the fallback JSON (attestationResult.json)
+    try:
+        with open(attestation_result_fallback_path, 'r') as f:
+            fallback_json = json.load(f)
+            #print("Loaded fallback JSON:", json.dumps(fallback_json, indent=4)) 
+    except FileNotFoundError:
+        print(f"Fallback file '{attestation_result_fallback_path}' not found.")
+        fallback_json = {"error": "Fallback JSON not available."}
+
+    # Return the fallback JSON as the response
+    return Response(
+        json.dumps(fallback_json),
+        status=200,
+        content_type='application/json'
+    )
+
 
 @app.route('/ras/attestationResult', methods=['POST'])
 def ras_attestation_result():
@@ -169,6 +193,28 @@ def ais_start_process(nproc, asset_id):
     except:
         print("[SELFY VSOC] Could not connect to ", ais_endpoint)
         return ""
+
+
+def ais_start_process_trail(nproc, asset_id):
+    """
+    Fake AB Response
+    """
+    ab_json__path = './test-payload/ab/vulnReport.json'
+    # Load the fallback JSON (attestationResult.json)
+    try:
+        with open(ab_json__path, 'r') as f:
+            ab_json = json.load(f)
+            #print("Loaded fallback JSON:", json.dumps(fallback_json, indent=4)) 
+    except FileNotFoundError:
+        print(f"Fallback file '{ab_json__path}' not found.")
+        ab_json = {"error": "Fallback JSON not available."}
+
+    # Return the fallback JSON as the response
+    return Response(
+        json.dumps(ab_json),
+        status=200,
+        content_type='application/json'
+    )
 
 
 # AIS stop process
@@ -403,45 +449,34 @@ def ais_deviation_known():
     # Use-Case 34/35/36
     # target: vin
     #ras_extracted_info = ras_attestation_request(target, str(vin))
+    ras_extracted_info = ras_attestation_request_trail(target, str(vin))
  
-    #result = subprocess.run(['bash', '../test-payload/run-test-payload.sh'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-    json_ras_file_path = '../test-payload/ras/attestationResult.json'
-
-    curl_command = [
-        'curl', 
-        '-X', 'POST', 
-        'http://localhost:8000/ais/deviationKnown',  # Replace with the correct URL
-        '-H', 'Content-Type: application/json',
-        '-d', f'@{json_ras_file_path}'
-    ]
-
-    try:
-        result = subprocess.run(curl_command, 
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-        if result.return == 0:
-            response_data = json.loads(result.stdout)
-            status = response_data.get("status")
-            print(f"Attestation Status******************************: {status}")
-        else:
-            print(f"Script failed with error: {result.stderr}")
-    except Exception as e:
-        print(f"Error executing curl command: {e}")
-
-
-    '''if (ras_extracted_info.status_code == 200):
+    if (ras_extracted_info.status_code == 200):
         try:
-            response_data = json.loads(ras_extracted_info.text)
-            status = response_data.get("status")
-            print(f"Attestation Status******************************: {status}")
+            print("Reading the json.....")
+            response_data = json.loads(ras_extracted_info.get_data(as_text=True))
+            state = response_data.get("state")
+            print(f"Attestation Status: {state}")
         except json.JSONDecodeError:
             print("Invalid JSON in response")
     else:
-        print(f"Request failed with status code: {ras_extracted_info.status_code}") '''
+        print(f"Request failed with status code: {ras_extracted_info.status_code}") 
    
     # process: ais_1, asset_id: endpoint.example.com
     #ais_start_process("ais_1", "endpoint.example.com")
+    ab_extracted_info = ais_start_process_trail("ais_1", "endpoint.example.com")
+ 
+    if (ab_extracted_info.status_code == 200):
+        try:
+            print("Reading the json.....")
+            response_data = json.loads(ab_extracted_info.get_data(as_text=True))
+            result = response_data.get("result")
+            print(f"Vulnerability result: {result}")
+        except json.JSONDecodeError:
+            print("Invalid JSON in response")
+    else:
+        print(f"Request failed with status code: {ab_extracted_info.status_code}") 
+
  
     # ab_id:28, priority:1, vin, scan_type: fast scan
     #ab_trigger_audit(28, 1, str(vin), 1)
