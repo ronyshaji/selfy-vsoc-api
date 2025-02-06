@@ -353,7 +353,7 @@ def ais_deviation_unknown():
     return response_to_json(request_json, schema_path, opentelemetrie_prefix)
 
 
-@app.route('/ais/deviationKnown', methods=['POST'])
+''' @app.route('/ais/deviationKnown', methods=['POST'])
 def ais_deviation_known():
     """
         Getting information from the AIS for an known deviation.
@@ -382,6 +382,73 @@ def ais_deviation_known():
     # update trust-score
     trust_score.set_ts()
 
+    return response_to_json(request_json, schema_path, opentelemetrie_prefix) '''
+
+@app.route('/ais/deviationKnown', methods=['POST'])
+def ais_deviation_known():
+    """
+        Getting information from the AIS for an known deviation.
+        """
+    schema_path: str = 'jsonschema/ais/deviationKnown.json'
+    opentelemetrie_prefix = 'ais.deviationKnown'
+ 
+    if check_for_json(request):
+        return check_for_json(request)
+ 
+    request_json = request.get_json()
+    vin = request_json["indicator"]["source_vehicle"]
+    target = "00"
+    print(vin)
+ 
+    # Use-Case 34/35/36
+    # target: vin
+    #ras_extracted_info = ras_attestation_request(target, str(vin))
+ 
+    #result = subprocess.run(['bash', '../test-payload/run-test-payload.sh'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    json_ras_file_path = '../test-payload/ras/attestationResult.json'
+
+    curl_command = [
+        'curl', 
+        '-X', 'POST', 
+        'http://localhost:8000/ais/deviationKnown',  # Replace with the correct URL
+        '-H', 'Content-Type: application/json',
+        '-d', f'@{json_ras_file_path}'
+    ]
+
+    try:
+        result = subprocess.run(curl_command, 
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        if result.return == 0:
+            response_data = json.loads(result.stdout)
+            status = response_data.get("status")
+            print(f"Attestation Status******************************: {status}")
+        else:
+            print(f"Script failed with error: {result.stderr}")
+    except Exception as e:
+        print(f"Error executing curl command: {e}")
+
+
+    '''if (ras_extracted_info.status_code == 200):
+        try:
+            response_data = json.loads(ras_extracted_info.text)
+            status = response_data.get("status")
+            print(f"Attestation Status******************************: {status}")
+        except json.JSONDecodeError:
+            print("Invalid JSON in response")
+    else:
+        print(f"Request failed with status code: {ras_extracted_info.status_code}") '''
+   
+    # process: ais_1, asset_id: endpoint.example.com
+    #ais_start_process("ais_1", "endpoint.example.com")
+ 
+    # ab_id:28, priority:1, vin, scan_type: fast scan
+    #ab_trigger_audit(28, 1, str(vin), 1)
+ 
+    # update trust-score
+    #trust_score.set_ts()
+ 
     return response_to_json(request_json, schema_path, opentelemetrie_prefix)
 
 
